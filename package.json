@@ -2,7 +2,7 @@
   "name": "react-calculator",
   "version": "1.0.0",
   "description": "A modern, production-style React calculator with safe expression evaluation",
-  "homepage": "https://YOUR_USERNAME.github.io/react-calculator",
+  "homepage": "https://panuhya22-gif.github.io/react-calculator",
   "private": true,
   "dependencies": {
     "react": "^18.2.0",
