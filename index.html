@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React Calculator</title>
+  <style>
+    :root {
+      --bg: #0f1720;
+      --panel: #0b1220;
+      --accent: #3b82f6;
+      --muted: #94a3b8;
+      --btn: #1f2937;
+      --text: #e6eef6;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: var(--bg); color: var(--text); }
+    
+    .app-root { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+    .title { font-size: 28px; margin-bottom: 24px; text-align: center; color: var(--accent); }
+    .calculator { width: 360px; background: var(--panel); border-radius: 16px; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); }
+    .display { background: rgba(0,0,0,0.3); padding: 16px; border-radius: 12px; text-align: right; font-size: 32px; font-weight: 300; color: var(--text); min-height: 60px; word-wrap: break-word; word-break: break-all; border: 1px solid rgba(59,130,246,0.2); font-family: monospace; }
+    .pad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+    .calc-btn { background: var(--btn); border: 1px solid rgba(255,255,255,0.1); color: var(--text); padding: 16px; border-radius: 12px; font-size: 20px; font-weight: 500; cursor: pointer; transition: all 0.15s; user-select: none; }
+    .calc-btn:hover { transform: translateY(-3px); background: linear-gradient(135deg, #2d3748, #1a202c); box-shadow: 0 8px 20px rgba(59,130,246,0.2); }
+    .calc-btn:active { transform: translateY(-1px); }
+    .calc-btn:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn-ac { grid-column: span 2; background: #dc2626; }
+    .btn-ac:hover { background: #b91c1c; }
+    .history { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); }
+    .history h4 { margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: var(--muted); }
+    .history ul { list-style: none; padding: 0; margin: 0; }
+    .history li { cursor: pointer; padding: 8px 12px; font-size: 11px; margin-bottom: 4px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.2s; }
+    .history li:hover { background: rgba(59,130,246,0.15); }
+    .note { margin-top: 24px; font-size: 12px; color: var(--muted); text-align: center; max-width: 400px; }
+  </style>
+</head>
+<body>
+  <div class="app-root">
+    <h1 class="title">🧮 React Calculator</h1>
+    <div class="calculator">
+      <div class="display" id="display">0</div>
+      <div class="pad" id="pad"></div>
+      <div class="history" id="history-section"></div>
+    </div>
+    <p class="note">Try: <code>2 + 3 * 4</code> = 14 | Press <strong>Enter</strong> to evaluate | <strong>Escape</strong> to clear</p>
+  </div>
+
+  <script>
+    // Tokenizer
+    function tokenize(expr) {
+      const tokens = [];
+      let numberBuffer = '';
+      for (let i = 0; i < expr.length; i++) {
+        const ch = expr[i];
+        if (ch === ' ' || ch === '\t') continue;
+        if ((ch >= '0' && ch <= '9') || ch === '.') {
+          numberBuffer += ch;
+        } else if ('+-*/()'.includes(ch)) {
+          if (numberBuffer) { tokens.push(numberBuffer); numberBuffer = ''; }
+          tokens.push(ch);
+        } else {
+          throw new Error(`Invalid character: '${ch}'`);
+        }
+      }
+      if (numberBuffer) tokens.push(numberBuffer);
+      return tokens;
+    }
+
+    // Shunting Yard
+    function toPostfix(tokens) {
+      const precedence = { '+': 1, '-': 1, '*': 2, '/': 2 };
+      const output = [];
+      const stack = [];
+      for (const token of tokens) {
+        if (!isNaN(token)) {
+          output.push(token);
+        } else if (precedence[token] !== undefined) {
+          while (stack.length && stack[stack.length - 1] !== '(' && precedence[stack[stack.length - 1]] >= precedence[token]) {
+            output.push(stack.pop());
+          }
+          stack.push(token);
+        } else if (token === '(') {
+          stack.push(token);
+        } else if (token === ')') {
+          while (stack.length && stack[stack.length - 1] !== '(') output.push(stack.pop());
+          if (!stack.length) throw new Error('Mismatched parentheses');
+          stack.pop();
+        }
+      }
+      while (stack.length) {
+        const op = stack.pop();
+        if (op === '(') throw new Error('Mismatched parentheses');
+        output.push(op);
+      }
+      return output;
+    }
+
+    // Evaluator
+    function evaluatePostfix(postfix) {
+      const stack = [];
+      for (const token of postfix) {
+        if (!isNaN(token)) {
+          stack.push(parseFloat(token));
+        } else if ('+-*/'.includes(token)) {
+          if (stack.length < 2) throw new Error('Invalid expression');
+          const b = stack.pop();
+          const a = stack.pop();
+          let result;
+          if (token === '+') result = a + b;
+          else if (token === '-') result = a - b;
+          else if (token === '*') result = a * b;
+          else if (token === '/') {
+            if (b === 0) throw new Error('Division by zero');
+            result = a / b;
+          }
+          stack.push(result);
+        }
+      }
+      if (stack.length !== 1) throw new Error('Invalid expression');
+      return stack[0];
+    }
+
+    function evaluate(expr) {
+      if (!expr.trim()) throw new Error('Empty expression');
+      return evaluatePostfix(toPostfix(tokenize(expr)));
+    }
+
+    // UI Logic
+    let expression = '';
+    let result = '';
+    let error = '';
+    let history = JSON.parse(localStorage.getItem('calc_history') || '[]');
+
+    const display = document.getElementById('display');
+    const pad = document.getElementById('pad');
+    const historySection = document.getElementById('history-section');
+
+    function updateDisplay() {
+      display.textContent = error || (result !== '' ? result : (expression || '0'));
+    }
+
+    function saveHistory() {
+      localStorage.setItem('calc_history', JSON.stringify(history.slice(0, 5)));
+    }
+
+    function renderHistory() {
+      if (history.length === 0) {
+        historySection.innerHTML = '';
+        return;
+      }
+      let html = '<h4>History (Last 5)</h4><ul>';
+      for (let i = 0; i < Math.min(5, history.length); i++) {
+        const h = history[i];
+        html += `<li onclick="setExpression('${h.expr}')">${h.expr} = ${h.result}</li>`;
+      }
+      html += '</ul>';
+      historySection.innerHTML = html;
+    }
+
+    function setExpression(expr) {
+      expression = expr;
+      result = '';
+      error = '';
+      updateDisplay();
+    }
+
+    function handleClick(value) {
+      if (error) error = '';
+      if (value === 'C') {
+        expression = '';
+        result = '';
+        error = '';
+      } else if (value === '=') {
+        if (!expression) {
+          error = 'Empty expression';
+        } else {
+          try {
+            const ans = evaluate(expression);
+            result = ans;
+            history.unshift({ expr: expression, result: ans });
+            saveHistory();
+            renderHistory();
+            expression = '';
+          } catch (e) {
+            error = e.message;
+            result = '';
+          }
+        }
+      } else if (result !== '') {
+        if (value === '.' || (value >= '0' && value <= '9')) {
+          expression = value;
+          result = '';
+        } else {
+          expression = result + value;
+          result = '';
+        }
+      } else {
+        const isOp = '+-*/'.includes(value);
+        if (isOp) {
+          if (!expression) return;
+          if (isOp && '+-*/'.includes(expression[expression.length - 1])) {
+            expression = expression.slice(0, -1) + value;
+            updateDisplay();
+            return;
+          }
+        }
+        if (value === '.') {
+          const lastOpIdx = Math.max(expression.lastIndexOf('+'), expression.lastIndexOf('-'), expression.lastIndexOf('*'), expression.lastIndexOf('/'));
+          if (expression.slice(lastOpIdx + 1).includes('.')) {
+            updateDisplay();
+            return;
+          }
+        }
+        expression += value;
+      }
+      updateDisplay();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); handleClick('='); }
+      else if (e.key === 'Escape') { e.preventDefault(); handleClick('C'); }
+      else if (e.key === 'Backspace') { e.preventDefault(); expression = expression.slice(0, -1); updateDisplay(); }
+      else if ('0123456789'.includes(e.key)) { e.preventDefault(); handleClick(e.key); }
+      else if ('+-*/'.includes(e.key)) { e.preventDefault(); handleClick(e.key); }
+      else if (e.key === '.') { e.preventDefault(); handleClick('.'); }
+      else if (e.key === '(' || e.key === ')') { e.preventDefault(); handleClick(e.key); }
+    });
+
+    // Render buttons
+    const buttons = ['7','8','9','/',  '4','5','6','*',  '1','2','3','-',  '0','.','=','+'];
+    for (const b of buttons) {
+      const btn = document.createElement('button');
+      btn.className = 'calc-btn' + (b === '=' ? ' btn-ac' : '');
+      btn.textContent = b;
+      btn.onclick = () => handleClick(b);
+      pad.appendChild(btn);
+    }
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'calc-btn btn-ac';
+    clearBtn.textContent = 'C';
+    clearBtn.onclick = () => handleClick('C');
+    clearBtn.style.gridColumn = 'span 2';
+    pad.appendChild(clearBtn);
+
+    renderHistory();
+    updateDisplay();
+
+    window.setExpression = setExpression;
+  </script>
+</body>
+</html>
