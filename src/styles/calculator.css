@@ -1,0 +1,27 @@
+/* Purpose: Calculator styles - dark modern theme
+   Inputs: class names from components
+   Outputs: Visual layout using CSS Grid / Flexbox
+*/
+
+:root{
+  --bg:#0f1720;
+  --panel:#0b1220;
+  --accent:#3b82f6;
+  --muted:#94a3b8;
+  --btn:#1f2937;
+  --text:#e6eef6;
+}
+
+*{box-sizing:border-box}
+html,body,#root{height:100%;margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+
+.app-root{display:flex;align-items:center;justify-content:center;padding:24px}
+.calculator{width:320px;background:var(--panel);border-radius:12px;padding:16px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+.display{background:transparent;padding:12px 14px;border-radius:8px;text-align:right;font-size:24px;color:var(--text);min-height:48px}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.calc-btn{background:var(--btn);border:none;color:var(--text);padding:14px;border-radius:8px;font-size:18px;cursor:pointer;transition:transform .06s,background .12s}
+.calc-btn:hover{transform:translateY(-2px);background:linear-gradient(180deg, #2b3646, #1a2430)}
+.btn-ac{grid-column:span 2;background:#ff6b6b}
+.history{margin-top:12px;color:var(--muted);font-size:12px}
+
+@media (max-width:400px){.calculator{width:100%;padding:12px}}
